@@ -11,7 +11,7 @@ namespace MonoGame.ScreenGrabber2
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         Texture2D ScreenshotTexture;
-        Screenshooter ScreenshotTaker;
+        IScreenshooter ScreenshotTaker;
 
         Vector2 SelectStart;
         Vector2 SelectEnd;
@@ -20,7 +20,7 @@ namespace MonoGame.ScreenGrabber2
 
         float CurrentSpeed = 0;
 
-        public ScreenshotGame(Screenshooter screenshooter)
+        public ScreenshotGame(IScreenshooter screenshooter)
         {
             IsMouseVisible = true;
             Window.IsBorderless = true;
@@ -74,7 +74,6 @@ namespace MonoGame.ScreenGrabber2
                     var newVec = new Vector2(mstate.X, mstate.Y);
                     CurrentSpeed += (SelectEnd - newVec).Length();
                     SelectEnd = newVec;
-
                 }
             }
             else

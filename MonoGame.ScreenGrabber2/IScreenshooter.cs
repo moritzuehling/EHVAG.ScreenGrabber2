@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MonoGame.ScreenGrabber2
 {
-    public interface Screenshooter
+    public interface IScreenshooter
     {
         byte[] GetScreenshotAsBGRA(int windowX, int windowY, out int width, out int height);
     }

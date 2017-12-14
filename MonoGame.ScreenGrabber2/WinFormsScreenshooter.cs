@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace MonoGame.ScreenGrabber2
 {
-    class WinFormsScreenshooter : Screenshooter
+    class WinFormsScreenshooter : IScreenshooter
     {
         public byte[] GetScreenshotAsBGRA(int windowX, int windowY, out int width, out int height)
         {

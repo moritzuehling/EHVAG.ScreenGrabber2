@@ -14,14 +14,20 @@ namespace MonoGame.ScreenGrabber2
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             StartWatch = new Stopwatch();
             StartWatch.Start();
 
-            var winforms = new WinFormsScreenshooter();
+            IScreenshooter shooter = null;
 
-            using (var game = new ScreenshotGame(winforms))
+            if (args.Length == 1 && args[0] == "--sway")
+                shooter = new SwayScreenshooter();
+            else
+                shooter = new WinFormsScreenshooter();
+
+
+            using (var game = new ScreenshotGame(shooter))
                 game.Run();
         }
     }
