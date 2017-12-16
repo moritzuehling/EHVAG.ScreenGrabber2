@@ -14,7 +14,6 @@ namespace MonoGame.ScreenGrabber2
     {
         Dictionary<string, Rectangle> SwayScreens = new Dictionary<string, Rectangle>();
 
-
         public byte[] GetScreenshotAsBGRA(int windowX, int windowY, out int width, out int height)
         {
             GenerateSwayScreens();
@@ -72,7 +71,6 @@ namespace MonoGame.ScreenGrabber2
 
                 if (right < screen.Value.Right)
                     right = screen.Value.Right;
-
             }
 
             var res = new Rectangle(top, left, right - left, bottom - top);

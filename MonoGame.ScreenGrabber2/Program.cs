@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 
 namespace MonoGame.ScreenGrabber2
 {
@@ -19,15 +20,21 @@ namespace MonoGame.ScreenGrabber2
             StartWatch = new Stopwatch();
             StartWatch.Start();
 
-            IScreenshooter shooter = null;
 
-            if (args.Length == 1 && args[0] == "--sway")
+            IScreenshooter shooter = null;
+            IHotkeyInterface hotkeyInterface = null;
+
+            if (args.Contains("--sway"))
                 shooter = new SwayScreenshooter();
             else
                 shooter = new WinFormsScreenshooter();
 
+            if (args.Contains("--udp"))
+                hotkeyInterface = new UdpHotkeyInterface();
+            else
+                hotkeyInterface = new HotkeyForm();
 
-            using (var game = new ScreenshotGame(shooter))
+            using (var game = new ScreenshotGame(shooter, hotkeyInterface))
                 game.Run();
         }
     }

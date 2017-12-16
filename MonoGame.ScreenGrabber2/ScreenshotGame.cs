@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using Forms = System.Windows.Forms;
 
@@ -12,22 +13,25 @@ namespace MonoGame.ScreenGrabber2
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
         Texture2D ScreenshotTexture;
+        Texture2D WhiteTexture;
         IScreenshooter ScreenshotTaker;
 
         Vector2 SelectStart;
         Vector2 SelectEnd;
 
         bool IsSelecting;
-        bool EscapeWasReleased = true;
+        bool EscapeWasReleased = false;
+
+        bool isRunning = false;
 
         float CurrentSpeed = 0;
 
-        public ScreenshotGame(IScreenshooter screenshooter)
+        float Whiteness = 1;
+
+        IHotkeyInterface HotkeyManager;
+
+        public ScreenshotGame(IScreenshooter screenshooter, IHotkeyInterface hotkeyInterface)
         {
-            System.Console.WriteLine(this.Window.GetType().FullName);
-
-            System.Environment.Exit(0);
-
             IsMouseVisible = true;
             Window.IsBorderless = true;
             ScreenshotTaker = screenshooter;
@@ -36,6 +40,7 @@ namespace MonoGame.ScreenGrabber2
             graphics = new GraphicsDeviceManager(this);
 
             Content.RootDirectory = "Content";
+            HotkeyManager = hotkeyInterface;
         }
         
         public void Hide()
@@ -52,11 +57,13 @@ namespace MonoGame.ScreenGrabber2
         {
             int x, y;
             Sdl.Mouse.GetGlobalState(out x, out y);
-            Sdl.Window.SetSize(Window.Handle, 50, 50);
+            Sdl.Window.SetSize(Window.Handle, 5, 5);
 
-            var s = Forms.Screen.FromPoint(new System.Drawing.Point(x, y));
-            this.Window.Position = new Point(x, y);
+            Sdl.Rectangle rect;
+            Window.Position = new Point(x, y);
             
+            Sdl.Display.GetBounds(Sdl.Window.GetDisplayIndex(Window.Handle), out rect);
+            Window.Position = new Point(rect.X, rect.Y);
         }
 
         protected override void Initialize()
@@ -67,11 +74,15 @@ namespace MonoGame.ScreenGrabber2
         protected override void LoadContent()
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
-            GrabScreenshot();
+            WhiteTexture = new Texture2D(GraphicsDevice, 32, 32);
+            WhiteTexture.SetData<Color>(Enumerable.Repeat(Color.White, 32 * 32).ToArray());
+            // GrabScreenshot();
         }
 
         private void GrabScreenshot()
         {
+            System.Console.WriteLine("Grabbing screenshot");
+
             graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
             graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
             graphics.ApplyChanges();
@@ -80,7 +91,10 @@ namespace MonoGame.ScreenGrabber2
             byte[] data = ScreenshotTaker.GetScreenshotAsBGRA(Window.Position.X, Window.Position.Y, out width, out height);
 
             if (ScreenshotTexture != null)
+            {
                 ScreenshotTexture.Dispose();
+                ScreenshotTexture = null;
+            }
             
             ScreenshotTexture = new Texture2D(GraphicsDevice, width, height);
             ScreenshotTexture.SetData(data);
@@ -92,22 +106,27 @@ namespace MonoGame.ScreenGrabber2
         
         protected override void Update(GameTime gameTime)
         {
-            if (Keyboard.GetState().IsKeyDown(Keys.Escape))
-            {
-                if (EscapeWasReleased)
-                {
-                    Hide();
-                    Thread.Sleep(2000);
-                    MoveToMouse();
-                    Show();
-                    GrabScreenshot();
-                }
-                EscapeWasReleased = false;
+            var kbState = Keyboard.GetState();
 
-            }
-            else if (!EscapeWasReleased)
-            {
+            if (EscapeWasReleased && kbState.IsKeyDown(Keys.Escape))
+                isRunning = false;
+
+            if (kbState.IsKeyUp(Keys.Escape))
                 EscapeWasReleased = true;
+
+            if (!isRunning)
+            {
+                Hide();
+                HotkeyManager.WaitFor();
+                MoveToMouse();
+                GrabScreenshot();
+                Show();
+                isRunning = true;
+                EscapeWasReleased = false;
+                Whiteness = 1;
+
+                IsSelecting = false;
+                SelectStart = SelectEnd = Vector2.Zero;
             }
 
             var mstate = Mouse.GetState();
@@ -132,6 +151,9 @@ namespace MonoGame.ScreenGrabber2
             }
 
             CurrentSpeed *= .85f;
+
+            Whiteness -= (float)gameTime.ElapsedGameTime.TotalSeconds * 1.2f;
+
             base.Update(gameTime);
         }
         
@@ -139,8 +161,14 @@ namespace MonoGame.ScreenGrabber2
         {
             GraphicsDevice.Clear(Color.DarkGray);
 
-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+            if (ScreenshotTexture == null)
+            {
+                GraphicsDevice.Clear(Color.White);
+                base.Draw(gameTime);
+                return;
+            }
 
+            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
             spriteBatch.Draw(ScreenshotTexture, Vector2.Zero, new Color(Color.White, .5f));
 
             if ((SelectStart - SelectEnd).LengthSquared() > 2)
@@ -155,15 +183,11 @@ namespace MonoGame.ScreenGrabber2
                 spriteBatch.Draw(ScreenshotTexture, topLeft, new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)size.X, (int)size.Y), new Color(Color.White, currentAlpha));
             }
 
+            spriteBatch.Draw(WhiteTexture, GraphicsDevice.Viewport.Bounds, new Color(Color.White, Whiteness));
 
             spriteBatch.End();
 
             base.Draw(gameTime);
-
-
-            while (Mouse.GetState().RightButton == ButtonState.Pressed)
-                Thread.Sleep(100);
-            Program.StartWatch.Stop();
         }
     }
 }
